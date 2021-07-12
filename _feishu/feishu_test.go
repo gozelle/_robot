@@ -1,4 +1,4 @@
-package _robot
+package _feishu
 
 import (
 	"github.com/stretchr/testify/require"
