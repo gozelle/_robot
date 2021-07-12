@@ -6,7 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/koyeo/goutils/_http"
+	"github.com/koyeo/_bucket"
+	"github.com/koyeo/_http"
 	"log"
 	"net/url"
 	"strconv"
@@ -73,19 +74,19 @@ func NewDingTalkRobot(config *DingTalkConfig) *DingTalkRobot {
 	}
 	robot := &DingTalkRobot{
 		config: config,
-		bucket: NewBucket(config.Duration),
+		bucket: _bucket.NewBucket(config.Duration),
 	}
 	return robot
 }
 
 type DingTalkRobot struct {
-	bucket         *Bucket
+	bucket         *_bucket.Bucket
 	config         *DingTalkConfig
 	titleFormatter func(messages []interface{}) string
 	at             *DingTalkAt
 }
 
-func (p *DingTalkRobot) Bucket() *Bucket {
+func (p *DingTalkRobot) Bucket() *_bucket.Bucket {
 	return p.bucket
 }
 
@@ -177,9 +178,6 @@ func (p *DingTalkRobot) sign() (timestamp int64, sign string) {
 func (p *DingTalkRobot) Request(title string, msg *DingTalkMessageMarkdown) (err error) {
 	timestamp, sign := p.sign()
 	
-	req := _http.NewRequest()
-	req.SetContentType(_http.APPLICATION_JSON)
-	
 	address, err := url.Parse(p.config.Webhook)
 	if err != nil {
 		log.Println(err)
@@ -190,12 +188,13 @@ func (p *DingTalkRobot) Request(title string, msg *DingTalkMessageMarkdown) (err
 	query.Add("sign", sign)
 	address.RawQuery = query.Encode()
 	msg.Title = title
-	_, err = req.Post(address.String(), &DingTalkMessage{
+	resp := _http.Post(address.String(), _http.Payload(&DingTalkMessage{
 		MsgType:  Markdown,
 		At:       p.at,
 		Markdown: msg,
-	})
-	if err != nil {
+	}))
+	if resp.Error() != nil {
+		err = resp.Error()
 		return
 	}
 	return
